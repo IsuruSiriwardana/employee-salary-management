@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
@@ -39,6 +40,7 @@ public class UsersControllerV1Test {
         .perform(multipart("/v1/users/upload").file(file))
         .andDo(print())
         .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.message").value(ResponseMessage.USERS_CREATED.getMessage()))
         .andReturn();
   }
 
@@ -51,6 +53,7 @@ public class UsersControllerV1Test {
         .perform(multipart("/v1/users/upload").file(file))
         .andDo(print())
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value(ResponseMessage.USERS_UPDATED.getMessage()))
         .andReturn();
   }
 
@@ -62,6 +65,7 @@ public class UsersControllerV1Test {
         .perform(multipart("/v1/users/upload").file(file))
         .andDo(print())
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value(ResponseMessage.FILE_READ_ERROR.getMessage()))
         .andReturn();
   }
 

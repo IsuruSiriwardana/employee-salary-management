@@ -4,7 +4,7 @@ Currently, it uses an in memory DB to persist data. Hence, each shutdown will wi
 
 ## Development setup
 The project requires below tools to build
-* Java IDE
+* Java IDE (Ex. IntelliJ IDEA)
 * JDK 11
 * Maven 
 * Gitbash
@@ -20,10 +20,10 @@ This readme file contains diagrams with mermaid syntax. Refer below link to find
 https://www.jetbrains.com/help/idea/markdown.html#diagrams 
 
 ## Build guide
-To build the code you can navigate to the needed branch and run `mvn clean install`
+To build the code, while in the needed branch you can navigate to the project root and run `mvn clean install`
 
 ### Unit test results
-Unit test code coverage report can be found at target/site/jacoco/index.html after running `mvn clean install`
+Unit test code coverage report can be found at `target/site/jacoco/index.html` after a successful build
 
 ## Run application
 To run the application using the built artifact, navigate to the `/target`directory after a build and run below command in a terminal  
@@ -41,16 +41,16 @@ Curl command
 `curl -i -X POST 'http://localhost:8080/v1/users/upload' -F "file=@/c/codes/employee-salary-management/src/test/resources/valid_users_upload_file.csv"`
 
 
-## Design decisions
-
-
-### Upload data
-
+## Application design documentation
+### Upload users
+#### Upload users design decisions
 * String incoming field character lengths not validated. 
-* All salaries will be in same currency. 
-* If incoming file has at least one id not existing in the database, 201 is returned upon successful operation
-* If all ids in the incoming file exist in the database, 200 is returned upon successful operation 
+* For salary values, currency is not accounted. 
+* If incoming file has at least one ID not existing in the database, 201 is returned upon successful operation
+* If all IDs in the incoming file exist in the database, 200 is returned upon successful operation 
+* In some operations such as DB write, if an error occurres, the resulting exception message is passed back to client for simplicity at this stage
 
+#### Upload users operation flow
 
 ```mermaid
 graph TD
@@ -58,10 +58,10 @@ graph TD
     B --> C[Convert csv content <br> to Users objects]
     C --> D{conversion<br> successfull}
     D --> |No| E[InvalidUserData 400]
-    D --> |Yes| F[Validate for <br> duplicate IDs]
+    D --> |Yes| F[Validate for <br> duplicate IDs <br> in file]
     F --> G{Duplicates <br> found}
     G --> |Yes|E
-    G --> |No| H[check count of <br> already existing user IDs]
+    G --> |No| H[get count of <br> already existing user IDs]
     H --> I[Save all users into DB]
     I --> J{Compare <br>already existing count <br> vs saved user count}
     J --> |Saved user count > already existing count| K[New users created]  
@@ -71,6 +71,6 @@ graph TD
     E --> O((END))
     N --> O
     M --> O
-
+    
 ```
 

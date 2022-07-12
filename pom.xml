@@ -128,6 +128,8 @@
 					<excludes>
 						<exclude>com/zenika/users/dto/**/*.class</exclude>
 						<exclude>com/zenika/users/entity/**/*.class</exclude>
+						<exclude>com/zenika/users/exception/**/*.class</exclude>
+						<exclude>com/zenika/users/mapper/**/*.class</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

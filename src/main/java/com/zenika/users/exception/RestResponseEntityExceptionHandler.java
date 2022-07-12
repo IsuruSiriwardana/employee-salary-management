@@ -1,8 +1,7 @@
-package com.zenika.users.controller;
+package com.zenika.users.exception;
 
 import com.zenika.users.dto.ResponseMessage;
 import com.zenika.users.dto.SimpleResponseDto;
-import com.zenika.users.exception.InvalidUserDataException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
