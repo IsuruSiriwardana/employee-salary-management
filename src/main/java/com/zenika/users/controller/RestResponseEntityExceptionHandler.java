@@ -1,5 +1,6 @@
 package com.zenika.users.controller;
 
+import com.zenika.users.dto.ResponseMessage;
 import com.zenika.users.dto.SimpleResponseDto;
 import com.zenika.users.exception.InvalidUserDataException;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +17,8 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
   @ExceptionHandler(RuntimeException.class)
   protected ResponseEntity<SimpleResponseDto> handleRuntimeException(RuntimeException ex) {
     SimpleResponseDto responseDto =
-        new SimpleResponseDto(ex.getMessage() + " " + ex.getCause().getMessage());
+        new SimpleResponseDto(
+            ResponseMessage.ERROR_OCCURRED_BAD_INPUT, ex.getMessage() + " " + ex.getCause().getMessage());
     log.error("Error occurred", ex);
     return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
   }
@@ -24,7 +26,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
   @ExceptionHandler(InvalidUserDataException.class)
   protected ResponseEntity<SimpleResponseDto> handleInvalidUserDataException(
       InvalidUserDataException ex) {
-    SimpleResponseDto responseDto = new SimpleResponseDto(ex.getMessage());
+    SimpleResponseDto responseDto = new SimpleResponseDto(ResponseMessage.ERROR_OCCURRED_BAD_INPUT, ex.getMessage());
     log.error("Error occurred", ex);
     return new ResponseEntity<>(responseDto, HttpStatus.BAD_REQUEST);
   }

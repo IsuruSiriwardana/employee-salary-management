@@ -3,7 +3,9 @@ package com.zenika.users.dto;
 import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import lombok.*;
+import org.springframework.validation.annotation.Validated;
 
+import javax.validation.constraints.Min;
 import java.time.LocalDate;
 
 @AllArgsConstructor
@@ -11,6 +13,7 @@ import java.time.LocalDate;
 @Setter
 @ToString
 @NoArgsConstructor
+@Validated
 public class UsersCsvDto {
   @CsvBindByName(column = "id", required = true)
   private String id;
@@ -22,6 +25,7 @@ public class UsersCsvDto {
   private String name;
 
   @CsvBindByName(column = "salary", required = true)
+  @Min(value = 0, message = "Salary cannot be negative")
   private double salary;
 
   @CsvBindByName(column = "startDate", required = true)

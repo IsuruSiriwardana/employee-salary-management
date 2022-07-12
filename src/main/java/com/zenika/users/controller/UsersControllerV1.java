@@ -1,8 +1,7 @@
 package com.zenika.users.controller;
 
-import com.zenika.users.constants.ResponseMessageConstant;
+import com.zenika.users.dto.ResponseMessage;
 import com.zenika.users.dto.SimpleResponseDto;
-import com.zenika.users.mapper.UsersCsvDtoToUsersMapper;
 import com.zenika.users.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,6 @@ import java.io.IOException;
 public class UsersControllerV1 {
 
   private UserService userService;
-  private UsersCsvDtoToUsersMapper usersMapper;
 
   @GetMapping
   public ResponseEntity<String> getVersion() {
@@ -32,12 +30,13 @@ public class UsersControllerV1 {
     log.info("User file upload request received");
     try {
       SimpleResponseDto simpleResponseDto = userService.uploadUsers(file.getInputStream());
-      return new ResponseEntity<>(simpleResponseDto, HttpStatus.OK);
+      return new ResponseEntity<>(
+          simpleResponseDto, simpleResponseDto.getMessage().getResponseStatus());
     } catch (IOException ex) {
       log.error("Error occurred during reading the incoming file", ex);
       return new ResponseEntity<>(
-          new SimpleResponseDto(ResponseMessageConstant.FILE_READ_ERROR),
-          HttpStatus.INTERNAL_SERVER_ERROR);
+          new SimpleResponseDto(ResponseMessage.FILE_READ_ERROR, ex.getMessage()),
+          ResponseMessage.FILE_READ_ERROR.getResponseStatus());
     }
   }
 }
