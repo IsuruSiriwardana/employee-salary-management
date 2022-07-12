@@ -5,7 +5,6 @@ import com.zenika.users.dto.SimpleResponseDto;
 import com.zenika.users.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,11 +18,6 @@ import java.io.IOException;
 public class UsersControllerV1 {
 
   private UserService userService;
-
-  @GetMapping
-  public ResponseEntity<String> getVersion() {
-    return new ResponseEntity<>("v1", HttpStatus.OK);
-  }
 
   @PostMapping("/upload")
   public ResponseEntity<?> uploadUsers(@RequestParam("file") MultipartFile file) {
