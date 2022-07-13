@@ -3,9 +3,11 @@ package com.zenika.users.service;
 import com.zenika.users.dto.ResponseMessage;
 import com.zenika.users.dto.SimpleResponseDto;
 import com.zenika.users.dto.UsersCsvDto;
+import com.zenika.users.dto.UsersListDto;
 import com.zenika.users.entity.Users;
 import com.zenika.users.exception.InvalidUserDataException;
 import com.zenika.users.mapper.UsersCsvDtoToUsersMapper;
+import com.zenika.users.mapper.UsersToUsersListDtoMapper;
 import com.zenika.users.repository.UsersRepository;
 import com.zenika.users.utils.CsvToBeanConverter;
 import lombok.AllArgsConstructor;
@@ -14,9 +16,11 @@ import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,13 +32,14 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
   private UsersRepository usersRepository;
-  private UsersCsvDtoToUsersMapper usersMapper;
+  private UsersCsvDtoToUsersMapper usersCsvDtoToUsersMapper;
+  private UsersToUsersListDtoMapper usersToUsersDtoMapper;
 
   @Override
   public SimpleResponseDto uploadUsers(InputStream inputStreamCsvData) {
     List<UsersCsvDto> usersCsvDtoList =
         CsvToBeanConverter.convertCsvToBean(inputStreamCsvData, UsersCsvDto.class);
-    List<Users> usersList = usersMapper.mapToUsers(usersCsvDtoList);
+    List<Users> usersList = usersCsvDtoToUsersMapper.mapToUsers(usersCsvDtoList);
     validateUsersList(usersList);
     Iterable<Users> existingUsers = getExistingUsers(usersList);
     Iterable<Users> savedUsers = saveUsers(usersList);
@@ -43,6 +48,61 @@ public class UserServiceImpl implements UserService {
         "Uploading completed with creating and updating {} users", IterableUtils.size(savedUsers));
     return new SimpleResponseDto(
         newUsersCreated ? ResponseMessage.USERS_CREATED : ResponseMessage.USERS_UPDATED);
+  }
+
+  @Override
+  public UsersListDto getUsers(
+      double minSalary, double maxSalary, int offset, int limit, String[] sortByInput) {
+
+    List<Sort.Order> orders = new ArrayList<>();
+    String[] sortBy = processSortByInput(sortByInput);
+    for (String sort : sortBy) {
+      String[] fieldAndDirection = sort.split(",");
+      String fieldName = validatedUsersField(fieldAndDirection[0]);
+      Sort.Direction direction = validatedSortDirection(fieldAndDirection[1]);
+      orders.add(new Sort.Order(direction, fieldName));
+    }
+    List<Users> users =
+        usersRepository.findBySalaryGreaterThanEqualAndSalaryLessThan(
+            minSalary, maxSalary, Sort.by(orders));
+    List<Users> paginatedList =
+        users.stream()
+            .skip(offset)
+            .limit(limit > 0 ? limit : users.size())
+            .collect(Collectors.toList());
+    return usersToUsersDtoMapper.mapToUsersListDto(paginatedList);
+  }
+
+  private String[] processSortByInput(String[] sortByInput) {
+    if (sortByInput.length == 2 && !sortByInput[0].contains(",")) {
+      sortByInput = new String[] {sortByInput[0] + "," + sortByInput[1]};
+    }
+    for (String sort : sortByInput) {
+      if (!sort.contains(",")) {
+        throw new InvalidUserDataException(
+            "sortBy must follow format fieldName,direction. Ex: salary:desc but found: " + sort);
+      }
+    }
+    return sortByInput;
+  }
+
+  private Sort.Direction validatedSortDirection(String direction) {
+    try {
+      return Sort.Direction.fromString(direction);
+    } catch (Exception ex) {
+      log.info("Invalid sort direction provided", ex);
+      throw new InvalidUserDataException(ex.getMessage());
+    }
+  }
+
+  private String validatedUsersField(String fieldName) {
+    if (List.of("id", "login", "name", "salary").contains(fieldName.toLowerCase())) {
+      return fieldName;
+    } else {
+      log.info("Invalid sort field name {} provided for sorting users", fieldName);
+      throw new InvalidUserDataException(
+          "sort field name provided " + fieldName + " is not supported");
+    }
   }
 
   private void validateUsersList(List<Users> usersList) {

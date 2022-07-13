@@ -37,12 +37,23 @@ To run the application using the built artifact, navigate to the `/target`direct
 
 You can find a sample file to try at: [test resources](src/test/resources/valid_users_upload_file.csv)
 
-Curl command  
+Sample curl command  
 `curl -i -X POST 'http://localhost:8080/v1/users/upload' -F "file=@/c/codes/employee-salary-management/src/test/resources/valid_users_upload_file.csv"`
 
+#### Fetch users (GET /v1/users)
 
-## Application design documentation
-### Upload users
+Sample curl command  
+`curl -i 'http://localhost:8080/v1/users?minSalary=2000&maxSalary=200000&sortBy=salary,asc&sortBy=id,desc'`
+
+
+### Application design documentation
+
+### General considerations
+Since the application seems to have paging and sorting capabilities, PagingAndSortingRepository is used
+No attempts to analyze performance against heavy loads have been made so far.  
+Hence, situations such as uploading a very large file, database having very large amounts of data can result unintended system slowness
+
+
 #### Upload users design decisions
 * String incoming field character lengths not validated. 
 * For salary values, currency is not accounted. 
@@ -72,5 +83,23 @@ graph TD
     N --> O
     M --> O
     
+```
+
+#### Fetch users design decisions
+* Since the required limit and offset value support does not allign with the paging concept, only sorting and filtering 
+is done at repository and the offset and limit is processed on the application 
+* sortBy parameter must follow format sortBy=<fieldName>,<direction>. direction can be `asc` or `desc`
+
+```mermaid
+graph TD
+    A((Start)) --> B[Receive Get users request]
+    B --> C{validate <br> incoming parameters}
+    C --> |sortBy values <br> invalid| D[InvalidUserDataException]
+    C --> |else| E[query repository with <br> salary range and sort arguments]
+    E --> F[Apply offset and limit <br> on returned results]
+    F --> G[Return users]
+    G --> H((End))
+    D --> H
+
 ```
 
