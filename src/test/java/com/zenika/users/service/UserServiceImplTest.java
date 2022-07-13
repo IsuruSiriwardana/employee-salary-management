@@ -2,9 +2,11 @@ package com.zenika.users.service;
 
 import com.zenika.users.dto.ResponseMessage;
 import com.zenika.users.dto.SimpleResponseDto;
+import com.zenika.users.dto.UsersListDto;
 import com.zenika.users.entity.Users;
 import com.zenika.users.exception.InvalidUserDataException;
 import com.zenika.users.mapper.UsersCsvDtoToUsersMapper;
+import com.zenika.users.mapper.UsersToUsersListDtoMapper;
 import com.zenika.users.repository.UsersRepository;
 import com.zenika.users.testutils.TestFileReader;
 import org.hibernate.exception.ConstraintViolationException;
@@ -14,11 +16,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.mapstruct.factory.Mappers;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Sort;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.zenika.users.testutils.TestFileReader.DUPLICATE_ID_CSV_DATA_SOURCE;
@@ -26,15 +30,10 @@ import static com.zenika.users.testutils.TestFileReader.VALID_CSV_DATA_SOURCE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.*;
 
 public class UserServiceImplTest {
-
-  private static final String[] FULL_VALID_USERS_IDS =
-      new String[] {"e0001", "e0002", "e0003", "e0004", "e0005", "e0006", "e0007", "e0008"};
-  private static final String[] PARTIAL_VALID_USERS_IDS =
-      new String[] {"e0005", "e0006", "e0007", "e0008"};
 
   private UsersRepository usersRepository;
   private UserService userService;
@@ -42,8 +41,12 @@ public class UserServiceImplTest {
   @BeforeEach
   void setup() {
     usersRepository = mock(UsersRepository.class);
-    UsersCsvDtoToUsersMapper usersMapper = Mappers.getMapper(UsersCsvDtoToUsersMapper.class);
-    userService = new UserServiceImpl(usersRepository, usersMapper);
+    UsersCsvDtoToUsersMapper usersCsvDtoToUsersMapper =
+        Mappers.getMapper(UsersCsvDtoToUsersMapper.class);
+    UsersToUsersListDtoMapper usersToUsersDtoMapper =
+        Mappers.getMapper(UsersToUsersListDtoMapper.class);
+    userService =
+        new UserServiceImpl(usersRepository, usersCsvDtoToUsersMapper, usersToUsersDtoMapper);
   }
 
   @Test
@@ -109,12 +112,69 @@ public class UserServiceImplTest {
     assertThrows(RuntimeException.class, executable);
   }
 
+  @Test
+  @DisplayName("getUsers should throw InvalidUserDataException when sortBy has wrong format")
+  void getUsersGivenWrongSortByFormat() {
+    Executable executable = () -> userService.getUsers(0, 1000, 0, 0, new String[] {"id"});
+    assertThrows(InvalidUserDataException.class, executable);
+  }
+
+  @Test
+  @DisplayName("getUsers should throw InvalidUserDataException when sortBy has invalid field")
+  void getUsersGivenWrongSortByField() {
+    Executable executable =
+        () -> userService.getUsers(0, 1000, 0, 0, new String[] {"startDate,asc"});
+    assertThrows(InvalidUserDataException.class, executable);
+  }
+
+  @Test
+  @DisplayName("getUsers should throw InvalidUserDataException when sortBy has invalid direction")
+  void getUsersGivenWrongSortByDirection() {
+    Executable executable =
+        () -> userService.getUsers(0, 1000, 0, 0, new String[] {"id,ascending"});
+    assertThrows(InvalidUserDataException.class, executable);
+  }
+
+  @Test
+  @DisplayName("getUsers should return filtered result when sortBy has the default passed value")
+  void getUsersGivenDefaultSortBy() {
+    givenRepositoryReturnsSortedUserDetails();
+    UsersListDto users = userService.getUsers(500, 5000, 1, 3, new String[]{"name", "desc"});
+    assertEquals(3, users.getResults().size());
+    assertEquals("e0003", users.getResults().get(2).getId());
+  }
+
+  @Test
+  @DisplayName("getUsers should return filtered result when all parameters are correct")
+  void getUsersGivenCorrectInputs() {
+    ArgumentCaptor<Sort> sortArgumentCaptor = ArgumentCaptor.forClass(Sort.class);
+    givenRepositoryReturnsSortedUserDetails();
+    UsersListDto users = userService.getUsers(500, 5000, 1, 3,
+        new String[]{"salary,asc", "name,desc"});
+    assertEquals(3, users.getResults().size());
+    assertEquals("e0003", users.getResults().get(2).getId());
+    verify(usersRepository).
+        findBySalaryGreaterThanEqualAndSalaryLessThan(anyDouble(), anyDouble(), sortArgumentCaptor.capture());
+    Sort sort = sortArgumentCaptor.getValue();
+    List<Sort.Order> orders = sort.toList();
+    assertEquals("salary", orders.get(0).getProperty());
+    assertEquals(Sort.Direction.ASC, orders.get(0).getDirection());
+    assertEquals("name", orders.get(1).getProperty());
+    assertEquals(Sort.Direction.DESC, orders.get(1).getDirection());
+  }
+
+  private void givenRepositoryReturnsSortedUserDetails() {
+    when(usersRepository
+        .findBySalaryGreaterThanEqualAndSalaryLessThan(anyDouble(), anyDouble(), any()))
+        .thenReturn(getSortedUsers());
+  }
+
   private void givenUsersRepositoryThrowsException(Exception exception) {
     when(usersRepository.saveAll(any())).thenThrow(exception);
   }
 
   private void givenUsersRepositorySaveAllSuccess() {
-    when(usersRepository.saveAll(any())).thenReturn(generateUsers(FULL_VALID_USERS_IDS));
+    when(usersRepository.saveAll(any())).thenReturn(generateUsers());
   }
 
   private InputStream givenValidUsersCsvInputStream() throws IOException {
@@ -126,16 +186,32 @@ public class UserServiceImplTest {
   }
 
   private void givenRepositoryHasAllUsersAlready() {
-    when(usersRepository.findAllById(any())).thenReturn(generateUsers(FULL_VALID_USERS_IDS));
+    when(usersRepository.findAllById(any())).thenReturn(generateUsers());
   }
 
   private void givenRepositoryHasOnlySomeUsersAlready() {
-    when(usersRepository.findAllById(any())).thenReturn(generateUsers(PARTIAL_VALID_USERS_IDS));
+    List<Users> users = generateUsers();
+    List<Users> subList = users.stream().skip(users.size() / 2).collect(Collectors.toList());
+    when(usersRepository.findAllById(any())).thenReturn(subList);
   }
 
-  private Iterable<Users> generateUsers(String... ids) {
-    return Arrays.stream(ids)
-        .map(id -> new Users(id, id, id, 100.0, new Date()))
-        .collect(Collectors.toList());
+  private List<Users> generateUsers() {
+    return List.of(
+        new Users("e0001", "hpotter", "Harry Potter", 1234.56, new Date()),
+        new Users("e0002", "rwesley", "Ron Weasley", 19234.50, new Date()),
+        new Users("e0003", "居住证申请", "Severus Snape", 4000.0, new Date()),
+        new Users("e0004", "rhagrid", "Rubeus Hagrid", 3999.999, new Date()),
+        new Users("e0005", "voldemort", "Lord Voldemort", 523.4, new Date()),
+        new Users("e0006", "gwesley", "Ginny Weasley", 4000.00, new Date()),
+        new Users("e0007", "hgranger", "Hermione Granger", 0.0, new Date()),
+        new Users("e0008", "adumbledore", "Albus Dumbledore", 341.23, new Date()));
+  }
+  private List<Users> getSortedUsers() {
+    return List.of(
+        new Users("e0005", "voldemort", "Lord Voldemort", 523.4, new Date()),
+        new Users("e0001", "hpotter", "Harry Potter", 1234.56, new Date()),
+        new Users("e0004", "rhagrid", "Rubeus Hagrid", 3999.999, new Date()),
+        new Users("e0003", "居住证申请", "Severus Snape", 4000.0, new Date()),
+        new Users("e0006", "gwesley", "Ginny Weasley", 4000.00, new Date()));
   }
 }

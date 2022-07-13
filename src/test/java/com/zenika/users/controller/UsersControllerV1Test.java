@@ -2,6 +2,8 @@ package com.zenika.users.controller;
 
 import com.zenika.users.dto.ResponseMessage;
 import com.zenika.users.dto.SimpleResponseDto;
+import com.zenika.users.dto.UsersDto;
+import com.zenika.users.dto.UsersListDto;
 import com.zenika.users.service.UserService;
 import com.zenika.users.testutils.TestFileReader;
 import org.junit.jupiter.api.DisplayName;
@@ -16,9 +18,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
+import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -67,6 +72,24 @@ public class UsersControllerV1Test {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value(ResponseMessage.FILE_READ_ERROR.getMessage()))
         .andReturn();
+  }
+
+  @Test
+  @DisplayName("When fetch users is called without any query parameters, request should be served")
+  void fetchUsersWithoutAnyQueryParametersShouldReturn200() throws Exception {
+    givenUserServiceReturnUserResult();
+    mockMvc
+        .perform(get("/v1/users"))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.results").exists())
+        .andReturn();
+  }
+
+  private void givenUserServiceReturnUserResult() {
+    UsersDto usersDto = new UsersDto("001", "loginId", "name", 1000, new Date());
+    when(userService.getUsers(anyDouble(), anyDouble(), anyInt(), anyInt(), any()))
+        .thenReturn(new UsersListDto(List.of(usersDto)));
   }
 
   private void givenUserServiceReturnsUsersCreated() {
