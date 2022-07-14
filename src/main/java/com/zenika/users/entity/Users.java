@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import javax.persistence.*;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -25,5 +26,5 @@ public class Users {
   @Min(0)
   private double salary;
   @NotNull
-  private Date startDate;
+  private LocalDate startDate;
 }

@@ -5,8 +5,8 @@ import com.zenika.users.dto.SimpleResponseDto;
 import com.zenika.users.dto.UsersListDto;
 import com.zenika.users.entity.Users;
 import com.zenika.users.exception.InvalidUserDataException;
+import com.zenika.users.mapper.UsersAndDtoMapper;
 import com.zenika.users.mapper.UsersCsvDtoToUsersMapper;
-import com.zenika.users.mapper.UsersToUsersListDtoMapper;
 import com.zenika.users.repository.UsersRepository;
 import com.zenika.users.testutils.TestFileReader;
 import org.hibernate.exception.ConstraintViolationException;
@@ -21,7 +21,7 @@ import org.springframework.data.domain.Sort;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,10 +43,10 @@ public class UserServiceImplTest {
     usersRepository = mock(UsersRepository.class);
     UsersCsvDtoToUsersMapper usersCsvDtoToUsersMapper =
         Mappers.getMapper(UsersCsvDtoToUsersMapper.class);
-    UsersToUsersListDtoMapper usersToUsersDtoMapper =
-        Mappers.getMapper(UsersToUsersListDtoMapper.class);
+    UsersAndDtoMapper usersAndDtoMapper =
+        Mappers.getMapper(UsersAndDtoMapper.class);
     userService =
-        new UserServiceImpl(usersRepository, usersCsvDtoToUsersMapper, usersToUsersDtoMapper);
+        new UserServiceImpl(usersRepository, usersCsvDtoToUsersMapper, usersAndDtoMapper);
   }
 
   @Test
@@ -197,21 +197,21 @@ public class UserServiceImplTest {
 
   private List<Users> generateUsers() {
     return List.of(
-        new Users("e0001", "hpotter", "Harry Potter", 1234.56, new Date()),
-        new Users("e0002", "rwesley", "Ron Weasley", 19234.50, new Date()),
-        new Users("e0003", "居住证申请", "Severus Snape", 4000.0, new Date()),
-        new Users("e0004", "rhagrid", "Rubeus Hagrid", 3999.999, new Date()),
-        new Users("e0005", "voldemort", "Lord Voldemort", 523.4, new Date()),
-        new Users("e0006", "gwesley", "Ginny Weasley", 4000.00, new Date()),
-        new Users("e0007", "hgranger", "Hermione Granger", 0.0, new Date()),
-        new Users("e0008", "adumbledore", "Albus Dumbledore", 341.23, new Date()));
+        new Users("e0001", "hpotter", "Harry Potter", 1234.56, LocalDate.now()),
+        new Users("e0002", "rwesley", "Ron Weasley", 19234.50, LocalDate.now()),
+        new Users("e0003", "居住证申请", "Severus Snape", 4000.0, LocalDate.now()),
+        new Users("e0004", "rhagrid", "Rubeus Hagrid", 3999.999, LocalDate.now()),
+        new Users("e0005", "voldemort", "Lord Voldemort", 523.4, LocalDate.now()),
+        new Users("e0006", "gwesley", "Ginny Weasley", 4000.00, LocalDate.now()),
+        new Users("e0007", "hgranger", "Hermione Granger", 0.0, LocalDate.now()),
+        new Users("e0008", "adumbledore", "Albus Dumbledore", 341.23, LocalDate.now()));
   }
   private List<Users> getSortedUsers() {
     return List.of(
-        new Users("e0005", "voldemort", "Lord Voldemort", 523.4, new Date()),
-        new Users("e0001", "hpotter", "Harry Potter", 1234.56, new Date()),
-        new Users("e0004", "rhagrid", "Rubeus Hagrid", 3999.999, new Date()),
-        new Users("e0003", "居住证申请", "Severus Snape", 4000.0, new Date()),
-        new Users("e0006", "gwesley", "Ginny Weasley", 4000.00, new Date()));
+        new Users("e0005", "voldemort", "Lord Voldemort", 523.4, LocalDate.now()),
+        new Users("e0001", "hpotter", "Harry Potter", 1234.56, LocalDate.now()),
+        new Users("e0004", "rhagrid", "Rubeus Hagrid", 3999.999, LocalDate.now()),
+        new Users("e0003", "居住证申请", "Severus Snape", 4000.0, LocalDate.now()),
+        new Users("e0006", "gwesley", "Ginny Weasley", 4000.00, LocalDate.now()));
   }
 }

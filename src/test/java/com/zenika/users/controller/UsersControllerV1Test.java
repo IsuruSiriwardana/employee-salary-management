@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -87,7 +87,7 @@ public class UsersControllerV1Test {
   }
 
   private void givenUserServiceReturnUserResult() {
-    UsersDto usersDto = new UsersDto("001", "loginId", "name", 1000, new Date());
+    UsersDto usersDto = new UsersDto("001", "loginId", "name", 1000D, LocalDate.now());
     when(userService.getUsers(anyDouble(), anyDouble(), anyInt(), anyInt(), any()))
         .thenReturn(new UsersListDto(List.of(usersDto)));
   }

@@ -1,17 +1,18 @@
 package com.zenika.users.service;
 
-import com.zenika.users.dto.ResponseMessage;
-import com.zenika.users.dto.SimpleResponseDto;
-import com.zenika.users.dto.UsersCsvDto;
-import com.zenika.users.dto.UsersListDto;
+import com.zenika.users.dto.*;
 import com.zenika.users.entity.Users;
+import com.zenika.users.exception.DuplicateEmployeeIdException;
+import com.zenika.users.exception.DuplicateLoginException;
 import com.zenika.users.exception.InvalidUserDataException;
+import com.zenika.users.exception.UserNotFoundException;
+import com.zenika.users.mapper.UsersAndDtoMapper;
 import com.zenika.users.mapper.UsersCsvDtoToUsersMapper;
-import com.zenika.users.mapper.UsersToUsersListDtoMapper;
 import com.zenika.users.repository.UsersRepository;
 import com.zenika.users.utils.CsvToBeanConverter;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.exception.ConstraintViolationException;
@@ -20,10 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,7 +31,7 @@ public class UserServiceImpl implements UserService {
 
   private UsersRepository usersRepository;
   private UsersCsvDtoToUsersMapper usersCsvDtoToUsersMapper;
-  private UsersToUsersListDtoMapper usersToUsersDtoMapper;
+  private UsersAndDtoMapper usersAndDtoMapper;
 
   @Override
   public SimpleResponseDto uploadUsers(InputStream inputStreamCsvData) {
@@ -70,7 +68,65 @@ public class UserServiceImpl implements UserService {
             .skip(offset)
             .limit(limit > 0 ? limit : users.size())
             .collect(Collectors.toList());
-    return usersToUsersDtoMapper.mapToUsersListDto(paginatedList);
+    return usersAndDtoMapper.mapToUsersListDto(paginatedList);
+  }
+
+  @Override
+  public UsersDto getUser(String id) {
+    Users users = getExistingUserThrowing(id);
+    return usersAndDtoMapper.mapToUsersDto(users);
+  }
+
+  @Override
+  public SimpleResponseDto createUser(UsersDto usersDto) {
+    validateIdAndLoginExist(usersDto.getId(), usersDto.getLogin());
+    Users users = usersAndDtoMapper.mapToUsers(usersDto);
+    saveUser(users);
+    return new SimpleResponseDto(ResponseMessage.USER_CREATED);
+  }
+
+  @Override
+  public SimpleResponseDto deleteUser(String id) {
+    getExistingUserThrowing(id);
+    usersRepository.deleteById(id);
+    return new SimpleResponseDto(ResponseMessage.USER_DELETED);
+  }
+
+  @Override
+  public SimpleResponseDto updateUser(String id, UsersDto usersDto) {
+    Users existingUser = getExistingUserThrowing(id);
+    if (!StringUtils.equals(existingUser.getLogin(), usersDto.getLogin())) {
+      validateLoginIdAlreadyUsedByOthers(id, usersDto.getLogin());
+    }
+    usersAndDtoMapper.update(existingUser, usersDto);
+    usersRepository.save(existingUser);
+    return new SimpleResponseDto(ResponseMessage.USER_UPDATED);
+  }
+
+  @Override
+  public SimpleResponseDto updateUser(String id, Map<String, Object> usersDataMap) {
+    Users existingUser = getExistingUserThrowing(id);
+    String originalLoginId = existingUser.getLogin();
+    usersAndDtoMapper.update(existingUser, usersDataMap);
+    String newLoginId = existingUser.getLogin();
+    if (!StringUtils.equals(originalLoginId, newLoginId)) {
+      validateLoginIdAlreadyUsedByOthers(id, newLoginId);
+    }
+    usersRepository.save(existingUser);
+    return new SimpleResponseDto(ResponseMessage.USER_UPDATED);
+  }
+
+  private void validateIdAndLoginExist(String id, String login) {
+    Optional<Users> userById = getExistingUser(id);
+    if (userById.isPresent()) {
+      log.info("id: {} already exist in DB", id);
+      throw new DuplicateEmployeeIdException("Employee id already in use: " + id);
+    }
+    List<Users> usersByLogin = usersRepository.findByLogin(login);
+    if (CollectionUtils.isNotEmpty(usersByLogin)) {
+      log.info("login: {} already exist in DB", login);
+      throw new DuplicateLoginException("Login id already in use: " + login);
+    }
   }
 
   private String[] processSortByInput(String[] sortByInput) {
@@ -124,9 +180,45 @@ public class UserServiceImpl implements UserService {
     }
   }
 
+  private void validateLoginIdAlreadyUsedByOthers(String currentUserId, String login) {
+    usersRepository.findByLogin(login).stream()
+        .filter(user -> !user.getId().equals(currentUserId))
+        .findAny()
+        .ifPresent(
+            (user) -> {
+              throw new DuplicateLoginException("Login ID already used by user: " + user.getId());
+            });
+  }
+
+  private Optional<Users> getExistingUser(String id) {
+    return usersRepository.findById(id);
+  }
+
+  private Users getExistingUserThrowing(String id) {
+    return getExistingUser(id)
+        .orElseThrow(
+            () -> {
+              log.info("Could not find a user for ID: {}", id);
+              return new UserNotFoundException("No user found for id: " + id);
+            });
+  }
+
   private Iterable<Users> getExistingUsers(List<Users> usersList) {
     List<String> userIdList = usersList.stream().map(Users::getId).collect(Collectors.toList());
     return usersRepository.findAllById(userIdList);
+  }
+
+  private void saveUser(Users users) {
+    log.info("Saving user in DB");
+    try {
+      usersRepository.save(users);
+    } catch (ConstraintViolationException | DataIntegrityViolationException ex) {
+      log.error("Error occurred while saving user to DB", ex);
+      throw new InvalidUserDataException("Error caused by invalid input data: " + ex.getMessage());
+    } catch (Exception ex) {
+      log.error("Unhandled exception during data save to DB: ", ex);
+      throw new RuntimeException(ex);
+    }
   }
 
   private Iterable<Users> saveUsers(List<Users> users) {

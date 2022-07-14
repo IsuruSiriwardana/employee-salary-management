@@ -3,7 +3,9 @@ package com.zenika.users.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
-import java.util.Date;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import java.time.LocalDate;
 
 @AllArgsConstructor
 @Getter
@@ -12,10 +14,17 @@ import java.util.Date;
 @NoArgsConstructor
 public class UsersDto {
 
+
+  @NotNull
   private String id;
+  @NotNull
   private String login;
+  @NotNull
   private String name;
-  private double salary;
+  @NotNull
+  @Min(0)
+  private Double salary;
+  @NotNull
   @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-  private Date startDate;
+  private LocalDate startDate;
 }

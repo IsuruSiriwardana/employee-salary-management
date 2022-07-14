@@ -3,11 +3,11 @@ This project consists of a REST api to upload employees and later perform CRUD o
 Currently, it uses an in memory DB to persist data. Hence, each shutdown will wipe the data
 
 ## Development setup
-The project requires below tools to build
+The project requires below tools for development and build
 * Java IDE (Ex. IntelliJ IDEA)
 * JDK 11
 * Maven 
-* Gitbash
+* git bash
 
 ### Other tools for IDE
 **Mapstruct and lombok support**

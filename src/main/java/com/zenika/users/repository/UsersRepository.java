@@ -11,4 +11,6 @@ import java.util.List;
 public interface UsersRepository extends PagingAndSortingRepository<Users, String> {
 
   List<Users> findBySalaryGreaterThanEqualAndSalaryLessThan(double maxSalary, double minSalary, Sort by);
+
+  List<Users> findByLogin(String login);
 }

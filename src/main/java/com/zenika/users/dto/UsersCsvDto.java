@@ -26,7 +26,7 @@ public class UsersCsvDto {
 
   @CsvBindByName(column = "salary", required = true)
   @Min(value = 0, message = "Salary cannot be negative")
-  private double salary;
+  private Double salary;
 
   @CsvBindByName(column = "startDate", required = true)
   @CsvDate(value = "[yyyy-MM-dd][dd-MMM-yy]")
